@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>For Someone 💙</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Handlee&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+<style>
+body {
+  margin: 0;
+  height: 100svh;
+  overflow: hidden;
+  font-family: Inter, sans-serif;
+  background: black;
+  color: #fff;
+}
+
+#canvas-container {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: black;
+}
+
+#content {
+  position: relative;
+  z-index: 10;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.step {
+  position: absolute;
+  width: 100%;
+  max-width: 1100px;
+  padding: 20px;
+  background: rgba(226,232,240,0.1);
+  backdrop-filter: blur(14px);
+  border-radius: 20px;
+  text-align: center;
+  opacity: 0;
+  transform: scale(.96) translateY(20px);
+  pointer-events: none;
+  transition: .6s ease;
+  max-height: 92svh;
+  overflow-y: auto;
+}
+
+.step.active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  pointer-events: auto;
+}
+
+.btn {
+  background: linear-gradient(135deg,#3b82f6,#1e40af);
+  color: white;
+  padding: 14px 32px;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 16px;
+  transition: 0.3s ease;
+  display: inline-block;
+}
+
+.btn:active { transform: scale(.96); }
+@media(hover:hover) { .btn:hover { transform: scale(1.06); } }
+
+.text-gradient {
+  background: linear-gradient(135deg,#1e40af,#3b82f6,#64748b);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+video, img {
+  border-radius: 14px;
+  width: 100%;
+  aspect-ratio: 9/16;
+  background: #0f172a;
+}
+
+#progress-container {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 85%;
+  max-width: 420px;
+  height: 6px;
+  background: rgba(148,163,184,.4);
+  border-radius: 3px;
+  z-index: 20;
+}
+
+
+#progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg,#1e40af,#3b82f6);
+  transition: width .5s ease;
+}
+
+/* === NEW MUSIC UI CSS === */
+.music-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  padding: 10px;
+}
+
+.music-card {
+  position: relative;
+  aspect-ratio: 1/1;
+  border-radius: 24px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.music-card:hover {
+  transform: translateY(-5px);
+}
+
+/* Variations based on your image */
+.card-purple { background: linear-gradient(135deg, #4c1d95, #1e1b4b); }
+.card-pink { background: linear-gradient(135deg, #be185d, #fb923c); }
+.card-dark { background: linear-gradient(135deg, #1e1b4b, #0f172a); }
+.card-white { background: linear-gradient(135deg, #f8fafc, #cbd5e1); color: #0f172a; }
+
+.song-info h3 { font-size: 1.25rem; font-weight: 700; margin: 0; }
+.song-info p { font-size: 0.75rem; opacity: 0.8; }
+
+.controls-ui {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Custom Progress Bar for UI look */
+.dummy-progress {
+  width: 100%;
+  height: 6px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 10px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+
+.play-circle {
+  width: 44px;
+  height: 44px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1e40af;
+  font-size: 20px;
+}
+.card-white .play-circle { background: #fb923c; color: white; }
+
+/* Visualizer Bars Style */
+.visualizer {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 15px;
+}
+.bar {
+  width: 3px;
+  height: 5px;
+  background: currentColor;
+  border-radius: 2px;
+  transition: height 0.2s ease;
+}
+.playing .bar { animation: bounce 0.8s ease-in-out infinite; }
+@keyframes bounce { 0%, 100% { height: 5px; } 50% { height: 15px; } }
+
+/* Hide default audio but keep logic */
+audio {
+  width: 100%;
+  height: 30px;
+  margin-top: 10px;
+  filter: invert(1);
+  opacity: 0.5;
+}
+.card-white audio { filter: none; }
+
+.star {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: white;
+  border-radius: 50%;
+  opacity: 0.8;
+  animation: twinkle 2s infinite alternate;
+}
+
+/* === CARD FLIP PAGE === */
+.flip-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+  gap:16px;
+  margin-top:20px;
+}
+.flip-card{
+  perspective:1000px;
+}
+.flip-inner{
+  position:relative;
+  width:100%;
+  aspect-ratio:1/1;
+  transform-style:preserve-3d;
+  transition:transform .6s;
+  cursor:pointer;
+}
+.flip-card.flipped .flip-inner{
+  transform:rotateY(180deg);
+}
+.flip-face{
+  position:absolute;
+  inset:0;
+  border-radius:16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:1.5rem;
+  backface-visibility:hidden;
+}
+.flip-front{
+  background:linear-gradient(135deg,#1e40af,#3b82f6);
+}
+.flip-back {
+  background: linear-gradient(135deg, #147ba3, #7227c7);
+  transform: rotateY(180deg);
+  
+  /* --- ADD THESE NEW LINES --- */
+  padding: 15px;           
+  font-size: 0.95rem;      
+  font-weight: 500;        
+  line-height: 1.4;        
+  text-align: center;       
+  color: #ffffff;          
+  letter-spacing: 0.5px;    
+  word-wrap: break-word;    
+  font-family: 'Handlee', cursive;
+}
+
+  /* Popup message style */
+  #flip-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    background: linear-gradient(135deg, #3b82f6, #1e40af);
+    color: white;
+    padding: 20px 40px;
+    border-radius: 16px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.4s ease, opacity 0.4s ease;
+  }
+  #flip-popup.show {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+
+</style>
+
+<div id="flip-popup">YAYY!</div>
+
+</head>
+
+<body>
+<div id="canvas-container"></div>
+<div id="progress-container"><div id="progress-bar"></div></div>
+
+<div id="content">
+  <div class="step active" id="step1">
+    <h1 class="text-4xl font-bold text-gradient">SABSE PEHLE TOH HAPPY NEW YEAR JI</h1>
+    <p class="mt-2">teko abhi bhi 84 years jina h yaad h na?</p>
+    <button class="btn" id="start-btn">Start</button>
+  </div>
+
+  <div class="step" id="step2">
+    <h2 class="text-3xl font-bold text-gradient">A Special Day </h2>
+    <p class="mt-2">Something made with patience ( ha patience 😭 )</p>
+    <button class="btn" id="next-btn-2">Next</button>
+  </div>
+
+  <div class="step" id="step3">
+    <h2 class="text-3xl font-bold text-gradient mb-4">Why You’re Awesome</h2>
+    <h2 class="text-sm md:text-base tracking-[0.35em] uppercase opacity-80">
+      "Calm Energy"👀 abe yh yh kon dala?!!
+    </h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="bg-slate-100/20 p-4 rounded-xl">🌊 Calm Energy</div>
+      <div class="bg-slate-100/20 p-4 rounded-xl">💎 Pure Heart</div>
+      <div class="bg-slate-100/20 p-4 rounded-xl">✨ Unique Soul</div>
+    </div>
+    <button class="btn" id="next-btn-3">Videos</button>
+  </div>
+
+  <div class="step" id="step4">
+    <h2 class="text-3xl font-bold text-gradient mb-2">SARE DEKH LE!!</h2>
+    <h2 class="text-sm md:text-base tracking-[0.35em] uppercase opacity-80">
+    chup chap dekh le.. (waise mein teko photo manga tha 😅)
+    </h2>
+    
+    <h2 class="text-sm md:text-base tracking-[0.35em] uppercase opacity-80">
+    kamse kam nice ke 4 dekh le meine bnaye h baki template h😅
+    </h2>
+
+    <h2 class="text-sm md:text-base tracking-[0.35em] uppercase opacity-80">
+    pehle 16 videos the 😭😭
+    </h2>    
+
+    <div id="video-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4"></div>
+    <button class="btn" id="next-btn-4">Photos</button>
+  </div>
+
+  <div class="step" id="step5">
+    <h2 class="text-3xl font-bold text-gradient mb-4">Photo Gallery</h2>
+    <h2 class="text-sm md:text-base tracking-[0.35em] uppercase opacity-80">
+     photos nhi liye tune kya dalta 😅 (ghumneke waqt)
+    </h2>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <img src="image1.jpg" alt="1">
+      <img src="image2.jpg" alt="2">
+      <img src="image3.jpg" alt="3">
+      <img src="image4.jpg" alt="4">
+    </div>
+    <button class="btn" id="next-btn-5">Next</button>
+  </div>
+
+<div class="step" id="step6">
+  <h2 class="text-3xl font-bold text-gradient mb-2">
+    Flip All Cards 
+  </h2>
+  <p class="text-sm opacity-70">
+    sab cards flip kar… tabhi aage jane milega 😌
+  </p>
+
+  <div class="flip-grid" id="flipGrid">
+    <div class="flip-card"><div class="flip-inner">
+      <div class="flip-face flip-front">?</div>
+      <div class="flip-face flip-back">Hey..</div>
+    </div></div>
+    <div class="flip-card"><div class="flip-inner">
+      <div class="flip-face flip-front">?</div>
+      <div class="flip-face flip-back">i just wanted to inform u that...</div>
+    </div></div>
+    <div class="flip-card"><div class="flip-inner">
+      <div class="flip-face flip-front">?</div>
+      <div class="flip-face flip-back">you are an amazing person ...</div>
+    </div></div>
+    <div class="flip-card"><div class="flip-inner">
+      <div class="flip-face flip-front">?</div>
+      <div class="flip-face flip-back">and i am very happy that you...</div>
+    </div></div>
+    <div class="flip-card"><div class="flip-inner">
+      <div class="flip-face flip-front">?</div>
+      <div class="flip-face flip-back">came to my life (kya mtlb randomly mile the😭)</div>
+    </div></div>
+    <div class="flip-card"><div class="flip-inner">
+      <div class="flip-face flip-front">?</div>
+      <div class="flip-face flip-back">kya? or kuch nhi h 😅</div>
+    </div></div>
+  </div>
+
+  <button class="btn opacity-40 pointer-events-none" id="flip-next">
+    Next
+  </button>
+</div>
+
+
+  <div class="step" id="step7">
+    <h2 class="text-3xl font-bold text-gradient mb-4">phirse happy new year!💙</h2>
+    <!-- Heading -->
+    <h2 class="text-sm md:text-base tracking-[0.35em] uppercase opacity-80">
+      Open Surprise ✨(last mein kholna){kyuki back button nhi h usme😭}
+    </h2>
+    <div class="flex flex-wrap justify-center gap-3">
+        <button class="btn" id="music-page-btn">Music for You 🎵</button>
+        <button class="btn" id="confetti-btn">CLICK!!</button>
+        <button class="btn" id="redirect-btn">Open Surprise ✨</button>
+    </div>
+    <button class="btn" id="next-btn-7">Countdown</button>
+  </div>
+
+<div class="step" id="step8">
+  <div class="relative w-full h-full flex flex-col items-center justify-center text-white p-6 text-center">
+
+    <!-- Heading -->
+    <h2 class="text-sm md:text-base tracking-[0.35em] uppercase opacity-80">
+      COMING SOON
+    </h2>
+
+    <p class="text-xs mt-1 opacity-60">
+      Time left until (Pta h kis ka countdown h yh?)
+    </p>
+
+    <!-- Countdown -->
+    <div class="grid grid-cols-4 gap-6 mt-10 w-full max-w-4xl">
+
+      <div class="flex flex-col items-center">
+        <span id="days"
+          class="text-6xl md:text-7xl lg:text-8xl font-extrabold leading-none drop-shadow-[0_0_25px_rgba(255,255,255,0.35)]">
+          00
+        </span>
+        <span class="mt-2 text-xs tracking-[0.3em] opacity-70">
+          DAYS
+        </span>
+      </div>
+
+      <div class="flex flex-col items-center">
+        <span id="hours"
+          class="text-6xl md:text-7xl lg:text-8xl font-extrabold leading-none drop-shadow-[0_0_25px_rgba(255,255,255,0.35)]">
+          00
+        </span>
+        <span class="mt-2 text-xs tracking-[0.3em] opacity-70">
+          HOURS
+        </span>
+      </div>
+
+      <div class="flex flex-col items-center">
+        <span id="minutes"
+          class="text-6xl md:text-7xl lg:text-8xl font-extrabold leading-none drop-shadow-[0_0_25px_rgba(255,255,255,0.35)]">
+          00
+        </span>
+        <span class="mt-2 text-xs tracking-[0.3em] opacity-70">
+          MINUTES
+        </span>
+      </div>
+
+      <div class="flex flex-col items-center">
+        <span id="seconds"
+          class="text-6xl md:text-7xl lg:text-8xl font-extrabold leading-none drop-shadow-[0_0_25px_rgba(255,255,255,0.35)]">
+          00
+        </span>
+        <span class="mt-2 text-xs tracking-[0.3em] opacity-70">
+          SECONDS
+        </span>
+      </div>
+
+    </div>
+
+    <!-- Back button -->
+    <button class="btn mt-10" onclick="showStep(7)">Back</button>
+
+  </div>
+</div>
+
+  <div class="step" id="step9">
+    <h2 class="text-3xl font-bold text-gradient mb-6">Your Playlist 🎵</h2>
+    
+    <div class="music-grid">
+      <div class="music-card card-purple">
+        <div class="song-info">
+          <h3>BILLIE BOSSA NOVA</h3>
+          <p>BILLIE EILISH</p>
+        </div>
+        <div class="controls-ui">
+          <div class="dummy-progress"></div>
+          <div class="visualizer"><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+          <audio controls><source src="music1.mp3" type="audio/mpeg"></audio>
+        </div>
+      </div>
+
+      <div class="music-card card-pink">
+        <div class="song-info">
+          <h3>THEY CALL THIS LOVE</h3>
+          <p>ELLIOT JAMES REAY</p>
+        </div>
+        <div class="controls-ui">
+          <div class="dummy-progress"></div>
+          <div class="visualizer"><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+          <audio controls><source src="music2.mp3" type="audio/mpeg"></audio>
+        </div>
+      </div>
+
+      <div class="music-card card-dark">
+        <div class="song-info">
+          <h3>CAN'T TAKE MY EYES OF YOU</h3>
+          <p>FRANKIE VALLI</p>
+        </div>
+        <div class="controls-ui">
+          <div class="dummy-progress"></div>
+          <div class="visualizer"><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+          <audio controls><source src="music3.mp3" type="audio/mpeg"></audio>
+        </div>
+      </div>
+
+      <div class="music-card card-white">
+        <div class="song-info">
+          <h3>EVERY BREATH YOU TAKE</h3>
+          <p>POLICE</p>
+        </div>
+        <div class="controls-ui">
+          <div class="dummy-progress"></div>
+          <div class="visualizer"><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+          <audio controls><source src="music4.mp3" type="audio/mpeg"></audio>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn mt-6" id="back-to-6">Back to Main</button>
+  </div>
+</div>
+
+<script>
+  
+/* === MUSIC PROGRESS BAR LOGIC (SAFE ADD-ON) === */
+document.querySelectorAll('.music-card').forEach(card => {
+  const audio = card.querySelector('audio');
+  const progressBar = card.querySelector('.dummy-progress');
+
+  if (!audio || !progressBar) return;
+
+  // Create inner progress element
+  const fill = document.createElement('div');
+  fill.style.height = '100%';
+  fill.style.width = '0%';
+  fill.style.background = 'linear-gradient(90deg,#38bdf8,#2563eb)';
+  fill.style.borderRadius = '2px';
+  fill.style.transition = 'width 0.1s linear';
+  progressBar.appendChild(fill);
+
+  // Update progress while playing
+  audio.addEventListener('timeupdate', () => {
+    if (!audio.duration) return;
+    const percent = (audio.currentTime / audio.duration) * 100;
+    fill.style.width = percent + '%';
+  });
+
+  // Click to seek
+  progressBar.addEventListener('click', e => {
+    const rect = progressBar.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const percent = clickX / rect.width;
+    audio.currentTime = percent * audio.duration;
+  });
+
+  // Reset when ended
+  audio.addEventListener('ended', () => {
+    fill.style.width = '0%';
+  });
+});
+
+/* (Keep your existing JS for Three.js, Videos, Navigation, and Music Logic) */
+const isMobile = matchMedia("(max-width:768px)").matches;
+const renderer = new THREE.WebGLRenderer({ alpha:true, antialias:true });
+renderer.setSize(innerWidth,innerHeight);
+document.getElementById("canvas-container").appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
+camera.position.z = 50;
+
+const stars = [];
+const starGeo = new THREE.SphereGeometry(0.1,6,6);
+for(let i=0;i<(isMobile?60:150);i++){
+  const star = new THREE.Mesh(starGeo,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true}));
+  star.position.set((Math.random()-0.5)*200,(Math.random()-0.5)*150,(Math.random()-0.5)*100);
+  star.userData={ speed: Math.random()*0.0015+0.0005, offset: Math.random()*Math.PI*2 };
+  scene.add(star);
+  stars.push(star);
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  stars.forEach(s=>{
+    s.position.y += Math.sin(Date.now()*s.userData.speed+s.userData.offset)*0.01;
+    s.material.opacity = 0.3 + 0.7 * Math.sin(Date.now()*s.userData.speed+s.userData.offset);
+  });
+  renderer.render(scene,camera);
+}
+animate();
+
+const grid = document.getElementById("video-grid");
+for (let i = 1; i <= 8; i++) {
+  const v = document.createElement("video");
+  v.controls = true; v.playsInline = true; v.loop = true;
+  v.innerHTML = `<source src="video${i}.mp4" type="video/mp4">`;
+  grid.appendChild(v);
+}
+
+// === VIDEO EXCLUSIVE PLAY FIX ===
+const allVideos = document.querySelectorAll("#video-grid video");
+
+allVideos.forEach(video => {
+  video.addEventListener("play", () => {
+
+    // Pause other videos
+    allVideos.forEach(v => {
+      if (v !== video) {
+        v.pause();
+        v.currentTime = 0; // optional
+      }
+    });
+
+    // Pause all music when a video plays
+    document.querySelectorAll("audio").forEach(a => a.pause());
+  });
+});
+
+
+const TOTAL=9;
+function showStep(n){
+  document.querySelectorAll(".step").forEach(s=>s.classList.remove("active"));
+  document.querySelectorAll("video, audio").forEach(media=>media.pause());
+  document.querySelectorAll(".music-card").forEach(c=>c.classList.remove("playing"));
+  const target = document.getElementById("step"+n);
+  if(target) target.classList.add("active");
+  document.getElementById("progress-bar").style.width=((n-1)/(TOTAL-1))*100+"%";
+}
+
+document.getElementById("start-btn").onclick=()=>showStep(2);
+document.getElementById("next-btn-2").onclick=()=>showStep(3);
+document.getElementById("next-btn-3").onclick=()=>showStep(4);
+document.getElementById("next-btn-4").onclick=()=>showStep(5);
+document.getElementById("next-btn-5").onclick=()=>showStep(6);
+document.getElementById("music-page-btn").onclick=()=>showStep(9);
+document.getElementById("back-to-6").onclick=()=>showStep(6);
+document.getElementById("redirect-btn").onclick = () => window.location.href = "surprise.html";
+document.getElementById("next-btn-7").onclick=()=>showStep(8);
+
+
+document.querySelectorAll('audio').forEach(audio => {
+  audio.onplay = () => {
+    document.querySelectorAll('audio').forEach(other => { if(other !== audio) other.pause(); });
+    document.querySelectorAll('.music-card').forEach(card => card.classList.remove('playing'));
+    audio.closest('.music-card').classList.add('playing');
+  };
+  audio.onpause = () => audio.closest('.music-card').classList.remove('playing');
+});
+
+function updateCountdown(){
+  const target = new Date("2026-02-08T00:00:00");
+  const diff = target - new Date();
+  if(diff <= 0) return;
+  document.getElementById("days").textContent = String(Math.floor(diff/(864e5))).padStart(2,'0');
+  document.getElementById("hours").textContent = String(Math.floor((diff/36e5)%24)).padStart(2,'0');
+  document.getElementById("minutes").textContent = String(Math.floor((diff/6e4)%60)).padStart(2,'0');
+  document.getElementById("seconds").textContent = String(Math.floor((diff/1e3)%60)).padStart(2,'0');
+}
+setInterval(updateCountdown, 1000);
+updateCountdown();
+
+document.getElementById("confetti-btn").onclick=()=>confetti({particleCount:150,spread:70});
+for(let i=0;i<50;i++){
+  const s=document.createElement('div');
+  s.className='star';
+  s.style.top=Math.random()*100+'vh'; s.style.left=Math.random()*100+'vw';
+  document.body.appendChild(s);
+}
+
+/* === CARD FLIP LOGIC === */
+const cards = document.querySelectorAll("#flipGrid .flip-card");
+const nextBtn = document.getElementById("flip-next");
+
+cards.forEach(card=>{
+  card.addEventListener("click",()=>{
+    card.classList.add("flipped");
+    checkFlips();
+  });
+});
+
+function checkFlips(){
+  const flipped = document.querySelectorAll("#flipGrid .flipped").length;
+  if(flipped === cards.length){
+    nextBtn.classList.remove("opacity-40","pointer-events-none");
+
+    // Show popup
+    const popup = document.getElementById("flip-popup");
+    popup.classList.add("show");
+
+    // Hide after 1 second
+    setTimeout(() => {
+      popup.classList.remove("show");
+    }, 1000);
+  }
+}
+
+
+nextBtn.onclick = ()=>showStep(7); // go to next page after cards
+
+
+</script>
+</body>
+</html>
